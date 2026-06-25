@@ -1,11 +1,13 @@
 import { useState } from 'react'
 import { Send, User, Mail, Phone, MessageSquare, Upload, CheckCircle, Printer } from 'lucide-react'
+import { supabase } from '../../supabaseClient'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
   const [file, setFile] = useState(null)
   const [submitted, setSubmitted] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState(null)
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value })
@@ -14,8 +16,28 @@ export default function Contact() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 1500))
+    setError(null)
+    
+    // Insert into Supabase
+    const { data, error: dbError } = await supabase
+      .from('contact_submissions')
+      .insert([
+        { 
+          name: form.name, 
+          email: form.email, 
+          phone: form.phone, 
+          message: form.message,
+          status: 'new'
+        }
+      ])
+      
+    if (dbError) {
+      console.error('Error submitting form:', dbError)
+      setError('There was an error sending your message. Please try again.')
+      setLoading(false)
+      return
+    }
+
     setSubmitted(true)
     setLoading(false)
   }
@@ -189,6 +211,13 @@ export default function Contact() {
                 />
               </label>
             </div>
+
+            {/* Error Message */}
+            {error && (
+              <div className="mt-5 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-sm text-red-400">
+                {error}
+              </div>
+            )}
 
             {/* Submit */}
             <button
