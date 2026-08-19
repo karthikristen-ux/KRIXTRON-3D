@@ -1,15 +1,41 @@
+import { useState } from 'react'
+import { Menu, X } from 'lucide-react'
 import Sidebar from '../Sidebar/Sidebar'
 
 export default function AdminLayout({ children }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
     <div className="min-h-screen bg-k-black">
-      <Sidebar />
-      {/* Main content area — offset by sidebar width */}
-      <main className="ml-[260px] min-h-screen transition-all duration-300">
-        <div className="p-8">
+      {/* Mobile Header */}
+      <div className="md:hidden fixed top-0 left-0 right-0 h-16 bg-k-dark border-b border-k-border z-30 flex items-center px-4 justify-between">
+        <span className="font-display font-bold text-sm tracking-wider text-white">
+          KRIX<span className="text-k-silver">TRON</span> <span className="text-xs text-k-silver-dim ml-2 font-body font-normal">ADMIN</span>
+        </span>
+        <button 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          className="p-2 text-k-silver hover:text-white transition-colors"
+        >
+          {mobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
+        </button>
+      </div>
+
+      <Sidebar mobileMenuOpen={mobileMenuOpen} setMobileMenuOpen={setMobileMenuOpen} />
+      
+      {/* Main content area — offset by sidebar width on desktop, padding top on mobile */}
+      <main className="md:ml-[260px] min-h-screen transition-all duration-300 pt-16 md:pt-0">
+        <div className="p-4 md:p-8">
           {children}
         </div>
       </main>
+
+      {/* Mobile Overlay */}
+      {mobileMenuOpen && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-30 md:hidden backdrop-blur-sm"
+          onClick={() => setMobileMenuOpen(false)}
+        />
+      )}
     </div>
   )
 }

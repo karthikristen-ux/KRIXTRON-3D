@@ -17,16 +17,17 @@ const NAV_ITEMS = [
   { label: 'Settings', path: '/settings', icon: Settings },
 ]
 
-export default function Sidebar() {
+export default function Sidebar({ mobileMenuOpen, setMobileMenuOpen }) {
   const [collapsed, setCollapsed] = useState(false)
   const { logout, admin } = useAuth()
   const location = useLocation()
 
   return (
     <aside
-      className={`fixed top-0 left-0 h-screen bg-k-dark border-r border-k-border flex flex-col transition-all duration-300 z-40 ${
-        collapsed ? 'w-[72px]' : 'w-[260px]'
-      }`}
+      className={`fixed top-0 left-0 h-screen bg-k-dark border-r border-k-border flex flex-col transition-all duration-300 z-40 
+        ${collapsed ? 'w-[72px]' : 'w-[260px]'}
+        ${mobileMenuOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0'}
+      `}
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-5 border-b border-k-border shrink-0">
@@ -49,6 +50,7 @@ export default function Sidebar() {
               <NavLink
                 key={item.path}
                 to={item.path}
+                onClick={() => setMobileMenuOpen && setMobileMenuOpen(false)}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 group ${
                   isActive
                     ? 'bg-white/[0.07] text-white'
@@ -93,7 +95,7 @@ export default function Sidebar() {
         {/* Collapse toggle */}
         <button
           onClick={() => setCollapsed(!collapsed)}
-          className="flex items-center justify-center w-full py-2 rounded-lg text-k-silver-dim hover:text-white hover:bg-white/[0.04] transition-all"
+          className="hidden md:flex items-center justify-center w-full py-2 rounded-lg text-k-silver-dim hover:text-white hover:bg-white/[0.04] transition-all"
         >
           {collapsed ? <ChevronRight size={18} /> : <ChevronLeft size={18} />}
         </button>

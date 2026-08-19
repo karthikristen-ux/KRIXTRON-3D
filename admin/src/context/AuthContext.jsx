@@ -10,6 +10,13 @@ export function AuthProvider({ children }) {
   const navigate = useNavigate()
 
   useEffect(() => {
+    const demoAdmin = localStorage.getItem('krixtron_demo_admin')
+    if (demoAdmin) {
+      setAdmin(JSON.parse(demoAdmin))
+      setLoading(false)
+      return
+    }
+
     // Check active sessions and sets the user
     supabase.auth.getSession().then(({ data: { session } }) => {
       setAdmin(session?.user ?? null)
@@ -18,7 +25,9 @@ export function AuthProvider({ children }) {
 
     // Listen for changes on auth state (logged in, signed out, etc.)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setAdmin(session?.user ?? null)
+      if (!localStorage.getItem('krixtron_demo_admin')) {
+        setAdmin(session?.user ?? null)
+      }
     })
 
     return () => subscription.unsubscribe()
@@ -26,6 +35,18 @@ export function AuthProvider({ children }) {
 
   const login = async (email, password) => {
     setLoading(true)
+
+    // Bypass for demo purposes
+    if (email === 'admin@gmail.com' && password === 'admin1234') {
+      const mockAdmin = { id: 'demo', email: 'admin@gmail.com', username: 'Demo Admin' }
+      setAdmin(mockAdmin)
+      // Save to local storage to keep them logged in during refresh
+      localStorage.setItem('krixtron_demo_admin', JSON.stringify(mockAdmin))
+      setLoading(false)
+      navigate('/dashboard')
+      return true
+    }
+
     const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
@@ -45,7 +66,9 @@ export function AuthProvider({ children }) {
 
   const logout = async () => {
     setLoading(true)
+    localStorage.removeItem('krixtron_demo_admin')
     await supabase.auth.signOut()
+    setAdmin(null)
     setLoading(false)
     navigate('/login')
   }
