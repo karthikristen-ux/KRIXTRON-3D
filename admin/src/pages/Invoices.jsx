@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { MOCK_INVOICES } from '../data/mockData'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 import { Search, Plus, FileDown, Upload, Edit3, Trash2, Download, X, Filter } from 'lucide-react'
 
 const STATUS_COLORS = {
@@ -10,21 +10,61 @@ const STATUS_COLORS = {
 }
 
 export default function Invoices() {
-  const [invoices, setInvoices] = useState(MOCK_INVOICES)
+  const [invoices, setInvoices] = useState([])
   const [search, setSearch] = useState('')
   const [filterStatus, setFilterStatus] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({
-    customerName: '', items: [{ description: '', quantity: 1, unitPrice: 0 }], status: 'PENDING', notes: ''
+    invoiceNo: '', customerName: '', items: [{ description: '', quantity: 1, unitPrice: 0 }], status: 'PENDING', notes: ''
   })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetchInvoices()
+  }, [])
+
+  const fetchInvoices = async () => {
+    const { data, error } = await supabase
+      .from('invoices')
+      .select('*')
+      .order('created_at', { ascending: false })
+      
+    if (!error && data) {
+      setInvoices(data)
+    }
+  }
 
   const filtered = invoices.filter(inv => {
-    const matchSearch = inv.invoiceNo.toLowerCase().includes(search.toLowerCase()) ||
-      inv.customer.name.toLowerCase().includes(search.toLowerCase())
+    const matchSearch = (inv.invoice_no || '').toLowerCase().includes(search.toLowerCase()) ||
+      (inv.customer_name || '').toLowerCase().includes(search.toLowerCase())
     const matchStatus = !filterStatus || inv.status === filterStatus
     return matchSearch && matchStatus
   })
+
+  const openNew = () => {
+    setEditing(null)
+    setForm({
+      invoiceNo: `KRX-${new Date().getFullYear()}-${String(invoices.length + 1).padStart(3, '0')}`,
+      customerName: '', 
+      items: [{ description: '', quantity: 1, unitPrice: 0 }], 
+      status: 'PENDING', 
+      notes: ''
+    })
+    setModalOpen(true)
+  }
+
+  const openEdit = (invoice) => {
+    setEditing(invoice)
+    setForm({ 
+      invoiceNo: invoice.invoice_no || '',
+      customerName: invoice.customer_name || '', 
+      items: invoice.items || [{ description: '', quantity: 1, unitPrice: 0 }], 
+      status: invoice.status || 'PENDING', 
+      notes: invoice.notes || '' 
+    })
+    setModalOpen(true)
+  }
 
   const addItem = () => setForm(f => ({ ...f, items: [...f.items, { description: '', quantity: 1, unitPrice: 0 }] }))
   const removeItem = (i) => setForm(f => ({ ...f, items: f.items.filter((_, idx) => idx !== i) }))
@@ -38,12 +78,43 @@ export default function Invoices() {
   const subtotal = form.items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0)
   const total = subtotal * 1.18
 
-  const handleExport = () => {
-    // In production, this would use SheetJS
-    alert('Excel export would be triggered here (requires SheetJS integration with backend)')
+  const handleSave = async () => {
+    if (!form.customerName || !form.invoiceNo) return
+    setLoading(true)
+
+    const payload = {
+      invoice_no: form.invoiceNo,
+      customer_name: form.customerName,
+      items: form.items,
+      status: form.status,
+      notes: form.notes,
+      subtotal: subtotal,
+      tax: subtotal * 0.18,
+      total_amount: total
+    }
+
+    if (editing) {
+      const { error } = await supabase.from('invoices').update(payload).eq('id', editing.id)
+      if (!error) fetchInvoices()
+    } else {
+      const { error } = await supabase.from('invoices').insert([payload])
+      if (!error) fetchInvoices()
+    }
+
+    setLoading(false)
+    setModalOpen(false)
   }
 
-  const handleDelete = (id) => setInvoices(prev => prev.filter(inv => inv.id !== id))
+  const handleExport = () => {
+    alert('Excel export would be triggered here (requires SheetJS integration)')
+  }
+
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('invoices').delete().eq('id', id)
+    if (!error) {
+      setInvoices(prev => prev.filter(inv => inv.id !== id))
+    }
+  }
 
   return (
     <div>
@@ -61,7 +132,7 @@ export default function Invoices() {
             <Upload size={14} /> Import
             <input type="file" accept=".xlsx,.xls,.csv" className="hidden" />
           </label>
-          <button onClick={() => { setEditing(null); setForm({ customerName: '', items: [{ description: '', quantity: 1, unitPrice: 0 }], status: 'PENDING', notes: '' }); setModalOpen(true) }}
+          <button onClick={openNew}
             className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-white to-k-silver text-k-black text-sm font-semibold rounded-xl hover:shadow-lg hover:shadow-white/10 transition-all">
             <Plus size={16} /> New Invoice
           </button>
@@ -109,7 +180,6 @@ export default function Invoices() {
                 <th className="text-right px-6 py-4 text-[11px] text-k-silver-dim uppercase tracking-wider font-medium">Amount</th>
                 <th className="text-center px-6 py-4 text-[11px] text-k-silver-dim uppercase tracking-wider font-medium">Status</th>
                 <th className="text-left px-6 py-4 text-[11px] text-k-silver-dim uppercase tracking-wider font-medium">Date</th>
-                <th className="text-left px-6 py-4 text-[11px] text-k-silver-dim uppercase tracking-wider font-medium">Due</th>
                 <th className="text-right px-6 py-4 text-[11px] text-k-silver-dim uppercase tracking-wider font-medium">Actions</th>
               </tr>
             </thead>
@@ -117,32 +187,28 @@ export default function Invoices() {
               {filtered.map((inv) => (
                 <tr key={inv.id} className="border-b border-k-border/50 hover:bg-white/[0.02] transition-colors">
                   <td className="px-6 py-4">
-                    <span className="text-sm font-medium text-white font-display tracking-wide">{inv.invoiceNo}</span>
+                    <span className="text-sm font-medium text-white font-display tracking-wide">{inv.invoice_no}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <p className="text-sm text-white">{inv.customer.name}</p>
-                    <p className="text-xs text-k-silver-dim">{inv.customer.phone}</p>
+                    <p className="text-sm text-white">{inv.customer_name}</p>
                   </td>
                   <td className="px-6 py-4 text-right">
-                    <span className="text-sm font-semibold text-white">₹{inv.totalAmount.toLocaleString('en-IN')}</span>
+                    <span className="text-sm font-semibold text-white">₹{(inv.total_amount || 0).toLocaleString('en-IN')}</span>
                   </td>
                   <td className="px-6 py-4 text-center">
-                    <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-semibold ${STATUS_COLORS[inv.status]}`}>
-                      {inv.status}
+                    <span className={`inline-block px-2.5 py-1 rounded-md text-[10px] uppercase tracking-wider font-semibold ${STATUS_COLORS[inv.status] || STATUS_COLORS.PENDING}`}>
+                      {inv.status || 'PENDING'}
                     </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-k-silver-dim">
-                    {new Date(inv.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
-                  </td>
-                  <td className="px-6 py-4 text-sm text-k-silver-dim">
-                    {inv.dueDate ? new Date(inv.dueDate).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' }) : '—'}
+                    {new Date(inv.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-1">
                       <button className="w-8 h-8 rounded-lg flex items-center justify-center text-k-silver-dim hover:text-white hover:bg-white/[0.06] transition-all" title="Download PDF">
                         <Download size={14} />
                       </button>
-                      <button className="w-8 h-8 rounded-lg flex items-center justify-center text-k-silver-dim hover:text-white hover:bg-white/[0.06] transition-all" title="Edit">
+                      <button onClick={() => openEdit(inv)} className="w-8 h-8 rounded-lg flex items-center justify-center text-k-silver-dim hover:text-white hover:bg-white/[0.06] transition-all" title="Edit">
                         <Edit3 size={14} />
                       </button>
                       <button onClick={() => handleDelete(inv.id)} className="w-8 h-8 rounded-lg flex items-center justify-center text-k-silver-dim hover:text-red-400 hover:bg-red-400/[0.06] transition-all" title="Delete">
@@ -152,6 +218,13 @@ export default function Invoices() {
                   </td>
                 </tr>
               ))}
+              {filtered.length === 0 && (
+                <tr>
+                  <td colSpan={6} className="px-6 py-12 text-center text-k-silver-dim text-sm">
+                    No invoices found
+                  </td>
+                </tr>
+              )}
             </tbody>
           </table>
         </div>
@@ -169,9 +242,25 @@ export default function Invoices() {
             </h2>
 
             <div className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <div className="col-span-1">
+                  <label className="block text-xs text-k-silver-dim uppercase tracking-wider mb-1.5">Invoice #</label>
+                  <input value={form.invoiceNo} onChange={e => setForm({...form, invoiceNo: e.target.value})} className="w-full px-4 py-2.5 bg-k-black border border-k-border rounded-lg text-sm text-white focus:outline-none focus:border-k-silver/40" />
+                </div>
+                <div className="col-span-2">
+                  <label className="block text-xs text-k-silver-dim uppercase tracking-wider mb-1.5">Customer Name *</label>
+                  <input value={form.customerName} onChange={e => setForm({...form, customerName: e.target.value})} className="w-full px-4 py-2.5 bg-k-black border border-k-border rounded-lg text-sm text-white focus:outline-none focus:border-k-silver/40" placeholder="e.g. John Doe" />
+                </div>
+              </div>
+              
               <div>
-                <label className="block text-xs text-k-silver-dim uppercase tracking-wider mb-1.5">Customer Name</label>
-                <input value={form.customerName} onChange={e => setForm({...form, customerName: e.target.value})} className="w-full px-4 py-2.5 bg-k-black border border-k-border rounded-lg text-sm text-white focus:outline-none focus:border-k-silver/40" placeholder="Search customer..." />
+                <label className="block text-xs text-k-silver-dim uppercase tracking-wider mb-1.5">Status</label>
+                <select value={form.status} onChange={e => setForm({...form, status: e.target.value})} className="w-full px-4 py-2.5 bg-k-black border border-k-border rounded-lg text-sm text-white focus:outline-none focus:border-k-silver/40 appearance-none">
+                  <option value="PENDING">PENDING</option>
+                  <option value="PAID">PAID</option>
+                  <option value="OVERDUE">OVERDUE</option>
+                  <option value="CANCELLED">CANCELLED</option>
+                </select>
               </div>
 
               {/* Line items */}
@@ -240,7 +329,7 @@ export default function Invoices() {
               <button onClick={() => setModalOpen(false)} className="px-5 py-2.5 text-sm text-k-silver-dim border border-k-border rounded-xl hover:text-white hover:border-k-silver/40 transition-all">
                 Cancel
               </button>
-              <button className="px-5 py-2.5 text-sm bg-gradient-to-r from-white to-k-silver text-k-black font-semibold rounded-xl hover:shadow-lg hover:shadow-white/10 transition-all">
+              <button disabled={loading} onClick={handleSave} className="px-5 py-2.5 text-sm bg-gradient-to-r from-white to-k-silver text-k-black font-semibold rounded-xl hover:shadow-lg hover:shadow-white/10 transition-all disabled:opacity-50">
                 {editing ? 'Save Invoice' : 'Create Invoice'}
               </button>
             </div>

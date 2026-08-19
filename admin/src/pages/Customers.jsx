@@ -1,18 +1,34 @@
-import { useState } from 'react'
-import { MOCK_CUSTOMERS } from '../data/mockData'
-import { Search, Plus, Edit3, Trash2, X, Phone, Mail, Building, MapPin } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
+import { Search, Plus, Edit3, Trash2, X } from 'lucide-react'
 
 export default function Customers() {
-  const [customers, setCustomers] = useState(MOCK_CUSTOMERS)
+  const [customers, setCustomers] = useState([])
   const [search, setSearch] = useState('')
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name: '', email: '', phone: '', company: '', address: '', notes: '' })
+  const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    fetchCustomers()
+  }, [])
+
+  const fetchCustomers = async () => {
+    const { data, error } = await supabase
+      .from('customers')
+      .select('*')
+      .order('created_at', { ascending: false })
+      
+    if (!error && data) {
+      setCustomers(data)
+    }
+  }
 
   const filtered = customers.filter(c =>
-    c.name.toLowerCase().includes(search.toLowerCase()) ||
-    c.company?.toLowerCase().includes(search.toLowerCase()) ||
-    c.phone.includes(search)
+    (c.name || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.company || '').toLowerCase().includes(search.toLowerCase()) ||
+    (c.phone || '').includes(search)
   )
 
   const openNew = () => {
@@ -23,22 +39,58 @@ export default function Customers() {
 
   const openEdit = (customer) => {
     setEditing(customer)
-    setForm({ name: customer.name, email: customer.email || '', phone: customer.phone, company: customer.company || '', address: customer.address || '', notes: customer.notes || '' })
+    setForm({ 
+      name: customer.name, 
+      email: customer.email || '', 
+      phone: customer.phone || '', 
+      company: customer.company || '', 
+      address: customer.address || '', 
+      notes: customer.notes || '' 
+    })
     setModalOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name || !form.phone) return
-    if (editing) {
-      setCustomers(prev => prev.map(c => c.id === editing.id ? { ...c, ...form } : c))
-    } else {
-      setCustomers(prev => [...prev, { ...form, id: String(Date.now()), createdAt: new Date().toISOString() }])
+    setLoading(true)
+
+    const payload = {
+      name: form.name,
+      email: form.email,
+      phone: form.phone,
+      company: form.company,
+      address: form.address,
+      notes: form.notes
     }
+
+    if (editing) {
+      const { error } = await supabase
+        .from('customers')
+        .update(payload)
+        .eq('id', editing.id)
+        
+      if (!error) {
+        setCustomers(prev => prev.map(c => c.id === editing.id ? { ...c, ...payload } : c))
+      }
+    } else {
+      const { data, error } = await supabase
+        .from('customers')
+        .insert([payload])
+        .select()
+        
+      if (!error && data) {
+        setCustomers(prev => [data[0], ...prev])
+      }
+    }
+    setLoading(false)
     setModalOpen(false)
   }
 
-  const handleDelete = (id) => {
-    setCustomers(prev => prev.filter(c => c.id !== id))
+  const handleDelete = async (id) => {
+    const { error } = await supabase.from('customers').delete().eq('id', id)
+    if (!error) {
+      setCustomers(prev => prev.filter(c => c.id !== id))
+    }
   }
 
   return (
@@ -98,7 +150,7 @@ export default function Customers() {
                   <td className="px-6 py-4 text-sm text-k-silver">{cust.company || '—'}</td>
                   <td className="px-6 py-4 text-sm text-k-silver-dim">{cust.address || '—'}</td>
                   <td className="px-6 py-4 text-sm text-k-silver-dim">
-                    {new Date(cust.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    {new Date(cust.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', year: 'numeric' })}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
@@ -168,7 +220,7 @@ export default function Customers() {
               <button onClick={() => setModalOpen(false)} className="px-5 py-2.5 text-sm text-k-silver-dim border border-k-border rounded-xl hover:text-white hover:border-k-silver/40 transition-all">
                 Cancel
               </button>
-              <button onClick={handleSave} className="px-5 py-2.5 text-sm bg-gradient-to-r from-white to-k-silver text-k-black font-semibold rounded-xl hover:shadow-lg hover:shadow-white/10 transition-all">
+              <button disabled={loading} onClick={handleSave} className="px-5 py-2.5 text-sm bg-gradient-to-r from-white to-k-silver text-k-black font-semibold rounded-xl hover:shadow-lg hover:shadow-white/10 transition-all disabled:opacity-50">
                 {editing ? 'Save Changes' : 'Add Customer'}
               </button>
             </div>

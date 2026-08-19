@@ -6,6 +6,7 @@ import Home from './pages/Home'
 import Services from './pages/Services'
 import Products from './pages/Products'
 import Contact from './pages/Contact'
+import TrackProcess from './pages/TrackProcess'
 
 export default function App() {
   return (
@@ -26,6 +27,7 @@ export default function App() {
           <Route path="/services" element={<Services />} />
           <Route path="/products" element={<Products />} />
           <Route path="/contact" element={<Contact />} />
+          <Route path="/track" element={<TrackProcess />} />
         </Routes>
       </main>
 

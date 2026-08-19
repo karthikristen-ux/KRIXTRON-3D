@@ -1,12 +1,28 @@
-import { useState } from 'react'
-import { MOCK_PRODUCTS } from '../data/mockData'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 import { Plus, Edit3, Trash2, X, Package, ToggleLeft, ToggleRight } from 'lucide-react'
 
 export default function Products() {
-  const [products, setProducts] = useState(MOCK_PRODUCTS)
+  const [products, setProducts] = useState([])
   const [modalOpen, setModalOpen] = useState(false)
   const [editing, setEditing] = useState(null)
   const [form, setForm] = useState({ name: '', description: '', material: '', price: '' })
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase.from('products').select('*').order('created_at', { ascending: false })
+    if (data) {
+      // Map database schema to frontend state
+      setProducts(data.map(p => ({
+        ...p,
+        isActive: p.is_active,
+        createdAt: p.created_at
+      })))
+    }
+  }
 
   const openNew = () => {
     setEditing(null)
@@ -20,21 +36,38 @@ export default function Products() {
     setModalOpen(true)
   }
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name) return
+    const payload = {
+      name: form.name,
+      description: form.description,
+      material: form.material,
+      price: Number(form.price),
+    }
+
     if (editing) {
-      setProducts(prev => prev.map(p => p.id === editing.id ? { ...p, ...form, price: Number(form.price) } : p))
+      await supabase.from('products').update(payload).eq('id', editing.id)
     } else {
-      setProducts(prev => [...prev, { ...form, id: String(Date.now()), price: Number(form.price), isActive: true, createdAt: new Date().toISOString() }])
+      await supabase.from('products').insert({
+        ...payload,
+        is_active: true,
+        category: 'General', // Defaulting for now
+        type: 'torus' // Defaulting for now
+      })
     }
     setModalOpen(false)
+    fetchProducts()
   }
 
-  const toggleActive = (id) => {
-    setProducts(prev => prev.map(p => p.id === id ? { ...p, isActive: !p.isActive } : p))
+  const toggleActive = async (id, currentStatus) => {
+    await supabase.from('products').update({ is_active: !currentStatus }).eq('id', id)
+    fetchProducts()
   }
 
-  const handleDelete = (id) => setProducts(prev => prev.filter(p => p.id !== id))
+  const handleDelete = async (id) => {
+    await supabase.from('products').delete().eq('id', id)
+    fetchProducts()
+  }
 
   return (
     <div>
@@ -81,7 +114,7 @@ export default function Products() {
               {/* Actions */}
               <div className="flex items-center justify-between pt-3 border-t border-k-border/50">
                 <button
-                  onClick={() => toggleActive(product.id)}
+                  onClick={() => toggleActive(product.id, product.isActive)}
                   className={`flex items-center gap-1.5 text-xs transition-colors ${
                     product.isActive ? 'text-emerald-400 hover:text-emerald-300' : 'text-k-silver-dim hover:text-white'
                   }`}

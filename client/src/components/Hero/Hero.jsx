@@ -1,69 +1,207 @@
+import { useEffect, useRef, useState } from 'react'
 import { ArrowRight, ChevronDown } from 'lucide-react'
 import { Link } from 'react-router-dom'
-import PrinterText from '../PrinterText/PrinterText'
 
 export default function Hero() {
+  const canvasRef = useRef(null)
+  const containerRef = useRef(null)
+  const [imagesLoaded, setImagesLoaded] = useState(false)
+  const [scrollProgress, setScrollProgress] = useState(0)
+  const imagesRef = useRef([])
+
+  // The local 3D printer sequence provided by the user
+  const frameCount = 51
+  
+  // Create the URL for a specific frame
+  const currentFrame = index => (
+    `/printer-sequence/ezgif-frame-${index.toString().padStart(3, '0')}.jpg`
+  )
+
+  // Preload all images on mount
+  useEffect(() => {
+    let loadedCount = 0
+
+    for (let i = 1; i <= frameCount; i++) {
+      const img = new Image()
+      img.src = currentFrame(i)
+      img.onload = () => {
+        loadedCount++
+        if (loadedCount === frameCount) {
+          setImagesLoaded(true)
+        }
+      }
+      imagesRef.current.push(img)
+    }
+  }, [])
+
+  // Handle scroll and drawing to canvas
+  useEffect(() => {
+    if (!imagesLoaded) return
+
+    const canvas = canvasRef.current
+    const context = canvas.getContext('2d')
+    const container = containerRef.current
+
+    // Set canvas dimensions to window inner size
+    canvas.width = window.innerWidth
+    canvas.height = window.innerHeight
+
+    const drawFrame = (index) => {
+      const img = imagesRef.current[index]
+      if (img) {
+        // Clear canvas
+        context.clearRect(0, 0, canvas.width, canvas.height)
+        
+        // Calculate aspect ratio to fit image properly (Cover effect)
+        const scale = Math.max(canvas.width / img.width, canvas.height / img.height)
+        const x = (canvas.width / 2) - (img.width / 2) * scale
+        const y = (canvas.height / 2) - (img.height / 2) * scale
+        
+        context.drawImage(img, x, y, img.width * scale, img.height * scale)
+      }
+    }
+
+    // Draw first frame immediately
+    drawFrame(0)
+
+    const handleScroll = () => {
+      // Calculate how far down the user has scrolled inside the 400vh container
+      const scrollTop = window.scrollY
+      const containerTop = container.offsetTop
+      const maxScroll = container.scrollHeight - window.innerHeight
+      
+      let progress = (scrollTop - containerTop) / maxScroll
+      // Clamp progress between 0 and 1
+      progress = Math.max(0, Math.min(1, progress))
+      setScrollProgress(progress)
+
+      // Determine which frame to show
+      const frameIndex = Math.min(
+        frameCount - 1,
+        Math.floor(progress * frameCount)
+      )
+
+      requestAnimationFrame(() => drawFrame(frameIndex))
+    }
+
+
+
+    // Handle resize
+    const handleResize = () => {
+      canvas.width = window.innerWidth
+      canvas.height = window.innerHeight
+      handleScroll()
+    }
+
+    window.addEventListener('scroll', handleScroll)
+    window.addEventListener('resize', handleResize)
+    
+    // Trigger scroll once to set initial state
+    handleScroll()
+
+    return () => {
+      window.removeEventListener('scroll', handleScroll)
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [imagesLoaded])
+
   return (
-    <section className="relative min-h-screen flex flex-col items-center justify-center overflow-hidden">
-      {/* Background glow */}
-      <div className="hero-glow" />
-
-      {/* Floating geometric shapes */}
-      <div className="absolute top-20 left-10 w-20 h-20 border border-k-border rotate-45 animate-float opacity-20" />
-      <div className="absolute bottom-32 right-16 w-16 h-16 border border-k-border rotate-12 animate-float opacity-15" style={{ animationDelay: '2s' }} />
-      <div className="absolute top-40 right-20 w-12 h-12 border border-k-border -rotate-12 animate-float opacity-10" style={{ animationDelay: '4s' }} />
-
-      {/* Content */}
-      <div className="relative z-10 text-center max-w-5xl mx-auto px-6 pt-20">
-        {/* Badge */}
-        <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-k-border bg-k-card/50 mb-8 animate-fade-in">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-          <span className="text-xs font-body text-k-silver-dim uppercase tracking-widest">
-            Precision 3D Manufacturing
-          </span>
-        </div>
-
-        {/* 3D Printer Text Animation */}
-        <PrinterText />
-
-        {/* Tagline */}
-        <p className="mt-6 text-lg md:text-xl text-k-silver-dim font-body font-light max-w-2xl mx-auto leading-relaxed animate-fade-in" style={{ animationDelay: '0.3s' }}>
-          From concept to creation — precision engineered 3D printing for
-          prototypes, production parts, and beyond.
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mt-10 animate-fade-in" style={{ animationDelay: '0.6s' }}>
-          <Link to="/contact" className="btn-primary">
-            Start Your Project
-            <ArrowRight size={16} />
-          </Link>
-          <Link to="/products" className="btn-outline">
-            View Products
-          </Link>
-        </div>
-
-        {/* Stats row */}
-        <div className="stats-section grid grid-cols-3 gap-8 mt-20 max-w-lg mx-auto animate-fade-in" style={{ animationDelay: '0.9s' }}>
-          <div className="text-center">
-            <p className="stat-number font-display text-2xl md:text-3xl font-bold text-white">500+</p>
-            <p className="text-xs text-k-silver-dim uppercase tracking-wider mt-1">Projects Done</p>
+    <section ref={containerRef} className="relative h-[400vh] bg-k-black">
+      {/* Sticky Container - locks to screen while scrolling */}
+      <div className="sticky top-0 h-screen w-full overflow-hidden flex items-center justify-center">
+        
+        {/* Loading State */}
+        {!imagesLoaded && (
+          <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-k-black">
+            <div className="w-8 h-8 border-2 border-k-silver-dim border-t-emerald-400 rounded-full animate-spin mb-4" />
+            <p className="text-k-silver-dim text-sm font-display tracking-widest uppercase">Loading High-Res Sequence...</p>
           </div>
-          <div className="text-center">
-            <p className="stat-number font-display text-2xl md:text-3xl font-bold text-white">50+</p>
-            <p className="text-xs text-k-silver-dim uppercase tracking-wider mt-1">Materials</p>
+        )}
+
+        {/* The Image Sequence Canvas */}
+        <canvas 
+          ref={canvasRef} 
+          className="absolute inset-0 z-0 w-full h-full object-cover opacity-80"
+        />
+
+        {/* --- SCROLL-TRIGGERED TEXT OVERLAYS --- */}
+        {/* These elements fade in and out based on the scroll progress (0.0 to 1.0) */}
+        
+        {/* Text 1: The Initial Hook (0 to 0.15) */}
+        <div 
+          className="absolute z-10 text-center transition-all duration-700 ease-out"
+          style={{
+            opacity: scrollProgress < 0.15 ? 1 : 0,
+            transform: `translateY(${scrollProgress < 0.15 ? '0px' : '-40px'})`,
+            pointerEvents: scrollProgress < 0.15 ? 'auto' : 'none'
+          }}
+        >
+          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-k-border bg-k-card/50 mb-8 backdrop-blur-md">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+            <span className="text-xs font-body text-k-silver-dim uppercase tracking-widest">
+              Precision 3D Manufacturing
+            </span>
           </div>
-          <div className="text-center">
-            <p className="stat-number font-display text-2xl md:text-3xl font-bold text-white">0.1mm</p>
-            <p className="text-xs text-k-silver-dim uppercase tracking-wider mt-1">Precision</p>
+          <h1 className="font-display text-5xl md:text-7xl font-bold text-white tracking-tight mb-6">
+            From concept <br /> to <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">creation.</span>
+          </h1>
+          <div className="absolute -bottom-20 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
+            <span className="text-[10px] text-k-silver-dim uppercase tracking-[0.2em]">Scroll to Build</span>
+            <ChevronDown size={16} className="text-k-silver-dim" />
           </div>
         </div>
-      </div>
 
-      {/* Scroll hint */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 animate-bounce">
-        <span className="text-[10px] text-k-silver-dim uppercase tracking-[0.2em]">Scroll</span>
-        <ChevronDown size={16} className="text-k-silver-dim" />
+        {/* Text 2: Left Side (0.25 to 0.45) */}
+        <div 
+          className="absolute z-10 left-[10%] md:left-[15%] max-w-sm transition-all duration-700 ease-out text-left"
+          style={{
+            opacity: scrollProgress > 0.25 && scrollProgress < 0.45 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.25 && scrollProgress < 0.45 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.25 && scrollProgress < 0.45 ? 'auto' : 'none'
+          }}
+        >
+          <h2 className="font-display text-4xl font-bold text-white mb-4">Flawless Layers</h2>
+          <p className="text-k-silver-dim text-lg leading-relaxed">
+            Every micron matters. Our high-precision resin printing ensures that your prototypes have the exact shape and structural integrity you designed.
+          </p>
+        </div>
+
+        {/* Text 3: Right Side (0.55 to 0.75) */}
+        <div 
+          className="absolute z-10 right-[10%] md:right-[15%] max-w-sm transition-all duration-700 ease-out text-right"
+          style={{
+            opacity: scrollProgress > 0.55 && scrollProgress < 0.75 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.55 && scrollProgress < 0.75 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.55 && scrollProgress < 0.75 ? 'auto' : 'none'
+          }}
+        >
+          <h2 className="font-display text-4xl font-bold text-white mb-4">Complex Routing</h2>
+          <p className="text-k-silver-dim text-lg leading-relaxed">
+            Seamlessly integrate wire channels, inserts, and moving parts perfectly into the final shape. No assembly required.
+          </p>
+        </div>
+
+        {/* Text 4: The Finale & Call to Action (0.85 to 1.0) */}
+        <div 
+          className="absolute z-10 text-center transition-all duration-700 ease-out"
+          style={{
+            opacity: scrollProgress > 0.85 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.85 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.85 ? 'auto' : 'none'
+          }}
+        >
+          <h2 className="font-display text-5xl font-bold text-white mb-8">Ready to print?</h2>
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+            <Link to="/contact" className="btn-primary">
+              Start Your Project
+              <ArrowRight size={16} />
+            </Link>
+            <Link to="/products" className="btn-outline bg-k-card/50 backdrop-blur-md">
+              View Materials
+            </Link>
+          </div>
+        </div>
+
       </div>
     </section>
   )

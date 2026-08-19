@@ -6,6 +6,7 @@ import Dashboard from './pages/Dashboard'
 import Customers from './pages/Customers'
 import Invoices from './pages/Invoices'
 import Quotations from './pages/Quotations'
+import ClientProcesses from './pages/ClientProcesses'
 import Products from './pages/Products'
 import Settings from './pages/Settings'
 
@@ -42,6 +43,7 @@ function AppRoutes() {
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/invoices" element={<Invoices />} />
                 <Route path="/quotations" element={<Quotations />} />
+                <Route path="/processes" element={<ClientProcesses />} />
                 <Route path="/products" element={<Products />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>

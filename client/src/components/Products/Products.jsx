@@ -1,7 +1,8 @@
-import { Suspense, useState } from 'react'
+import { Suspense, useState, useEffect } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { OrbitControls, Environment, ContactShadows } from '@react-three/drei'
 import { Eye, X, RotateCw } from 'lucide-react'
+import { supabase } from '../../supabaseClient'
 
 /* ─── Demo 3D object (placeholder until real .glb models) ─── */
 function DemoModel({ type = 'torus' }) {
@@ -65,17 +66,39 @@ function ModelViewer({ type = 'torus' }) {
   )
 }
 
-const PRODUCTS = [
+const PRODUCTS_FALLBACK = [
   { id: 1, name: 'Precision Gear Assembly', material: 'Nylon PA12', price: '₹2,500', type: 'torus', category: 'Mechanical' },
   { id: 2, name: 'Architectural Model', material: 'PLA White', price: '₹4,200', type: 'cube', category: 'Architecture' },
-  { id: 3, name: 'Wireframe Sphere', material: 'PETG Clear', price: '₹1,800', type: 'sphere', category: 'Art' },
-  { id: 4, name: 'Custom Enclosure', material: 'ABS Black', price: '₹3,100', type: 'cylinder', category: 'Electronics' },
-  { id: 5, name: 'Turbine Blade', material: 'Resin Grey', price: '₹5,600', type: 'torus', category: 'Industrial' },
-  { id: 6, name: 'Robot Joint', material: 'TPU Flex', price: '₹2,900', type: 'cube', category: 'Robotics' },
 ]
 
 export default function Products() {
   const [selected, setSelected] = useState(null)
+  const [products, setProducts] = useState([])
+
+  useEffect(() => {
+    fetchProducts()
+  }, [])
+
+  const fetchProducts = async () => {
+    const { data, error } = await supabase
+      .from('products')
+      .select('*')
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      
+    if (data && data.length > 0) {
+      setProducts(data.map(p => ({
+        id: p.id,
+        name: p.name,
+        material: p.material,
+        price: `₹${p.price.toLocaleString('en-IN')}`,
+        type: p.type || 'cube',
+        category: p.category || 'General'
+      })))
+    } else {
+      setProducts(PRODUCTS_FALLBACK)
+    }
+  }
 
   return (
     <section className="section-padding relative" id="products">
@@ -93,7 +116,7 @@ export default function Products() {
 
         {/* Product grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {PRODUCTS.map((product) => (
+          {products.map((product) => (
             <div
               key={product.id}
               className="glass-card glow-border overflow-hidden group cursor-pointer"

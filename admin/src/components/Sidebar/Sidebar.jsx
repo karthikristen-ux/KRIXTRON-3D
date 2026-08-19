@@ -2,7 +2,7 @@ import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import {
   LayoutDashboard, Users, FileText, FilePlus, Package,
-  Settings, LogOut, Printer, ChevronLeft, ChevronRight
+  Settings, LogOut, Printer, ChevronLeft, ChevronRight, Activity
 } from 'lucide-react'
 import { useState } from 'react'
 
@@ -11,6 +11,7 @@ const NAV_ITEMS = [
   { label: 'Customers', path: '/customers', icon: Users },
   { label: 'Invoices', path: '/invoices', icon: FileText },
   { label: 'Quotations', path: '/quotations', icon: FilePlus },
+  { label: 'Processes', path: '/processes', icon: Activity },
   { label: 'Products', path: '/products', icon: Package },
   { label: 'Settings', path: '/settings', icon: Settings },
 ]

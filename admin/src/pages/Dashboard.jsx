@@ -1,37 +1,7 @@
-import { MOCK_STATS, MOCK_INVOICES, MOCK_CUSTOMERS } from '../data/mockData'
+import { useState, useEffect } from 'react'
+import { supabase } from '../supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
 import { IndianRupee, FileText, Users, Package, TrendingUp, Clock } from 'lucide-react'
-
-const STAT_CARDS = [
-  {
-    label: 'Total Revenue',
-    value: `₹${MOCK_STATS.totalRevenue.toLocaleString('en-IN')}`,
-    icon: IndianRupee,
-    change: '+12.5%',
-    positive: true,
-  },
-  {
-    label: 'Pending Invoices',
-    value: MOCK_STATS.pendingInvoices,
-    icon: FileText,
-    change: '2 unpaid',
-    positive: false,
-  },
-  {
-    label: 'Total Customers',
-    value: MOCK_STATS.totalCustomers,
-    icon: Users,
-    change: '+3 this month',
-    positive: true,
-  },
-  {
-    label: 'Active Products',
-    value: MOCK_STATS.totalProducts,
-    icon: Package,
-    change: '5 active',
-    positive: true,
-  },
-]
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -48,6 +18,106 @@ const CustomTooltip = ({ active, payload, label }) => {
 }
 
 export default function Dashboard() {
+  const [stats, setStats] = useState({
+    totalRevenue: 0,
+    pendingInvoices: 0,
+    totalCustomers: 0,
+    totalProducts: 0,
+    monthlyRevenue: [],
+    invoicesByStatus: []
+  })
+  const [recentInvoices, setRecentInvoices] = useState([])
+  const [recentCustomers, setRecentCustomers] = useState([])
+
+  useEffect(() => {
+    fetchDashboardData()
+  }, [])
+
+  const fetchDashboardData = async () => {
+    try {
+      // Fetch totals
+      const { data: invoicesData } = await supabase.from('invoices').select('*')
+      const { data: customersData } = await supabase.from('customers').select('*').order('created_at', { ascending: false })
+      const { data: productsData } = await supabase.from('products').select('*').eq('is_active', true)
+
+      const invoices = invoicesData || []
+      const customers = customersData || []
+      const products = productsData || []
+
+      // Calculate stats
+      let totalRev = 0
+      let pendingCount = 0
+      let statusCounts = { PAID: 0, PENDING: 0, OVERDUE: 0, CANCELLED: 0 }
+      
+      invoices.forEach(inv => {
+        if (inv.status === 'PAID') totalRev += (inv.total_amount || 0)
+        if (inv.status === 'PENDING') pendingCount++
+        
+        if (statusCounts[inv.status] !== undefined) {
+          statusCounts[inv.status]++
+        }
+      })
+
+      // Generate invoice status pie data
+      const pieData = []
+      if (statusCounts.PAID > 0) pieData.push({ name: 'Paid', value: statusCounts.PAID, color: '#10b981' })
+      if (statusCounts.PENDING > 0) pieData.push({ name: 'Pending', value: statusCounts.PENDING, color: '#f59e0b' })
+      if (statusCounts.OVERDUE > 0) pieData.push({ name: 'Overdue', value: statusCounts.OVERDUE, color: '#ef4444' })
+
+      // Create a dummy monthly revenue chart (real implementation would group by month)
+      const currentMonth = new Date().toLocaleString('default', { month: 'short' })
+      const monthlyRev = [
+        { month: currentMonth, revenue: totalRev }
+      ]
+
+      setStats({
+        totalRevenue: totalRev,
+        pendingInvoices: pendingCount,
+        totalCustomers: customers.length,
+        totalProducts: products.length,
+        monthlyRevenue: monthlyRev,
+        invoicesByStatus: pieData
+      })
+
+      setRecentInvoices(invoices.sort((a,b) => new Date(b.created_at) - new Date(a.created_at)).slice(0, 4))
+      setRecentCustomers(customers.slice(0, 4))
+      
+    } catch (err) {
+      console.error("Error fetching dashboard data:", err)
+    }
+  }
+
+  const STAT_CARDS = [
+    {
+      label: 'Total Revenue',
+      value: `₹${stats.totalRevenue.toLocaleString('en-IN')}`,
+      icon: IndianRupee,
+      change: 'Lifetime',
+      positive: true,
+    },
+    {
+      label: 'Pending Invoices',
+      value: stats.pendingInvoices,
+      icon: FileText,
+      change: `${stats.pendingInvoices} unpaid`,
+      positive: stats.pendingInvoices === 0,
+    },
+    {
+      label: 'Total Customers',
+      value: stats.totalCustomers,
+      icon: Users,
+      change: 'Registered',
+      positive: true,
+    },
+    {
+      label: 'Active Products',
+      value: stats.totalProducts,
+      icon: Package,
+      change: 'Available',
+      positive: true,
+    },
+  ]
+
   return (
     <div>
       {/* Header */}
@@ -88,13 +158,13 @@ export default function Dashboard() {
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-sm font-semibold text-white">Monthly Revenue</h3>
-              <p className="text-xs text-k-silver-dim mt-0.5">Last 6 months</p>
+              <p className="text-xs text-k-silver-dim mt-0.5">Current Overview</p>
             </div>
             <TrendingUp size={18} className="text-k-silver-dim" />
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={MOCK_STATS.monthlyRevenue} barSize={32}>
+              <BarChart data={stats.monthlyRevenue} barSize={32}>
                 <CartesianGrid strokeDasharray="3 3" stroke="#2a2a2a" vertical={false} />
                 <XAxis dataKey="month" stroke="#707070" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#707070" fontSize={11} tickLine={false} axisLine={false}
@@ -123,37 +193,41 @@ export default function Dashboard() {
             <FileText size={18} className="text-k-silver-dim" />
           </div>
           <div className="h-48">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={MOCK_STATS.invoicesByStatus}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={50}
-                  outerRadius={75}
-                  paddingAngle={4}
-                  dataKey="value"
-                  stroke="none"
-                >
-                  {MOCK_STATS.invoicesByStatus.map((entry, index) => (
-                    <Cell key={index} fill={entry.color} />
-                  ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{
-                    background: '#1a1a1a',
-                    border: '1px solid #2a2a2a',
-                    borderRadius: '8px',
-                    fontSize: '12px',
-                    color: '#f5f5f5',
-                  }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+            {stats.invoicesByStatus.length > 0 ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={stats.invoicesByStatus}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={75}
+                    paddingAngle={4}
+                    dataKey="value"
+                    stroke="none"
+                  >
+                    {stats.invoicesByStatus.map((entry, index) => (
+                      <Cell key={index} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{
+                      background: '#1a1a1a',
+                      border: '1px solid #2a2a2a',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      color: '#f5f5f5',
+                    }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex items-center justify-center h-full text-k-silver-dim text-sm">No Invoice Data</div>
+            )}
           </div>
           {/* Legend */}
           <div className="flex items-center justify-center gap-5 mt-2">
-            {MOCK_STATS.invoicesByStatus.map((item) => (
+            {stats.invoicesByStatus.map((item) => (
               <div key={item.name} className="flex items-center gap-2">
                 <span className="w-2.5 h-2.5 rounded-full" style={{ background: item.color }} />
                 <span className="text-xs text-k-silver-dim">{item.name} ({item.value})</span>
@@ -169,7 +243,7 @@ export default function Dashboard() {
         <div className="bg-k-dark border border-k-border rounded-xl p-6">
           <h3 className="text-sm font-semibold text-white mb-4">Recent Invoices</h3>
           <div className="space-y-3">
-            {MOCK_INVOICES.slice(0, 4).map((inv) => (
+            {recentInvoices.length > 0 ? recentInvoices.map((inv) => (
               <div
                 key={inv.id}
                 className="flex items-center justify-between px-4 py-3 rounded-lg bg-k-card/50 border border-k-border/50 hover:border-k-border transition-colors"
@@ -179,12 +253,12 @@ export default function Dashboard() {
                     <FileText size={16} className="text-k-silver-dim" />
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-white">{inv.invoiceNo}</p>
-                    <p className="text-xs text-k-silver-dim">{inv.customer.name}</p>
+                    <p className="text-sm font-medium text-white">{inv.invoice_no}</p>
+                    <p className="text-xs text-k-silver-dim">{inv.customer_name}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-sm font-semibold text-white">₹{inv.totalAmount.toLocaleString('en-IN')}</p>
+                  <p className="text-sm font-semibold text-white">₹{(inv.total_amount || 0).toLocaleString('en-IN')}</p>
                   <span className={`text-[10px] uppercase tracking-wider font-medium ${
                     inv.status === 'PAID' ? 'text-emerald-400' :
                     inv.status === 'PENDING' ? 'text-amber-400' :
@@ -194,7 +268,7 @@ export default function Dashboard() {
                   </span>
                 </div>
               </div>
-            ))}
+            )) : <p className="text-sm text-k-silver-dim">No recent invoices.</p>}
           </div>
         </div>
 
@@ -202,26 +276,26 @@ export default function Dashboard() {
         <div className="bg-k-dark border border-k-border rounded-xl p-6">
           <h3 className="text-sm font-semibold text-white mb-4">Recent Customers</h3>
           <div className="space-y-3">
-            {MOCK_CUSTOMERS.slice(0, 4).map((cust) => (
+            {recentCustomers.length > 0 ? recentCustomers.map((cust) => (
               <div
                 key={cust.id}
                 className="flex items-center justify-between px-4 py-3 rounded-lg bg-k-card/50 border border-k-border/50 hover:border-k-border transition-colors"
               >
                 <div className="flex items-center gap-4">
                   <div className="w-9 h-9 rounded-full bg-gradient-to-br from-k-silver/20 to-k-border flex items-center justify-center">
-                    <span className="text-xs font-bold text-k-silver">{cust.name.charAt(0)}</span>
+                    <span className="text-xs font-bold text-k-silver">{(cust.name || 'C').charAt(0)}</span>
                   </div>
                   <div>
                     <p className="text-sm font-medium text-white">{cust.name}</p>
-                    <p className="text-xs text-k-silver-dim">{cust.company}</p>
+                    <p className="text-xs text-k-silver-dim">{cust.company || '—'}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 text-xs text-k-silver-dim">
                   <Clock size={12} />
-                  {new Date(cust.createdAt).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
+                  {new Date(cust.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
                 </div>
               </div>
-            ))}
+            )) : <p className="text-sm text-k-silver-dim">No recent customers.</p>}
           </div>
         </div>
       </div>

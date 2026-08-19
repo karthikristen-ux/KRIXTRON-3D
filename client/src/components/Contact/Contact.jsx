@@ -1,11 +1,13 @@
 import { useState } from 'react'
-import { Send, User, Mail, Phone, MessageSquare, Upload, CheckCircle, Printer } from 'lucide-react'
+import { Link } from 'react-router-dom'
+import { Send, User, Mail, Phone, MessageSquare, Upload, CheckCircle, Printer, ArrowRight } from 'lucide-react'
 import { supabase } from '../../supabaseClient'
 
 export default function Contact() {
   const [form, setForm] = useState({ name: '', email: '', phone: '', message: '' })
   const [file, setFile] = useState(null)
   const [submitted, setSubmitted] = useState(false)
+  const [trackingId, setTrackingId] = useState(null)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
 
@@ -18,11 +20,15 @@ export default function Contact() {
     setLoading(true)
     setError(null)
     
+    // Generate a unique tracking ID
+    const newTrackingId = `KRX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+
     // Insert into Supabase
     const { data, error: dbError } = await supabase
       .from('contact_submissions')
       .insert([
         { 
+          tracking_id: newTrackingId,
           name: form.name, 
           email: form.email, 
           phone: form.phone, 
@@ -38,6 +44,7 @@ export default function Contact() {
       return
     }
 
+    setTrackingId(newTrackingId)
     setSubmitted(true)
     setLoading(false)
   }
@@ -54,9 +61,24 @@ export default function Contact() {
             <p className="text-k-silver-dim mt-3 font-body">
               We'll get back to you within 24 hours. Thank you for choosing KRIXTRON.
             </p>
+            
+            {/* Tracking ID Section */}
+            <div className="mt-8 p-6 bg-k-black border border-k-border rounded-xl w-full max-w-md">
+              <p className="text-xs text-k-silver-dim uppercase tracking-wider mb-2">Your Tracking ID</p>
+              <div className="flex items-center justify-center gap-3 bg-k-dark py-3 px-4 rounded-lg border border-white/5">
+                <span className="font-mono text-xl font-bold text-white tracking-widest">{trackingId}</span>
+              </div>
+              <p className="text-[11px] text-k-silver-dim mt-4">
+                Please save this ID. You can use it to track the status of your request at any time.
+              </p>
+              <Link to="/track" className="btn-primary mt-6 w-full justify-center">
+                Track Process Now <ArrowRight size={16} />
+              </Link>
+            </div>
+
             <button
-              onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', message: '' }); setFile(null) }}
-              className="btn-outline mt-8 text-xs"
+              onClick={() => { setSubmitted(false); setForm({ name: '', email: '', phone: '', message: '' }); setFile(null); setTrackingId(null) }}
+              className="text-k-silver-dim hover:text-white mt-6 text-sm font-medium transition-colors"
             >
               Send Another Message
             </button>
