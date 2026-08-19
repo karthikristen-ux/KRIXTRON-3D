@@ -9,6 +9,7 @@ import Quotations from './pages/Quotations'
 import ClientProcesses from './pages/ClientProcesses'
 import Products from './pages/Products'
 import Settings from './pages/Settings'
+import ContactSubmissions from './pages/ContactSubmissions'
 
 function ProtectedRoute({ children }) {
   const { admin, loading } = useAuth()
@@ -45,6 +46,7 @@ function AppRoutes() {
                 <Route path="/quotations" element={<Quotations />} />
                 <Route path="/processes" element={<ClientProcesses />} />
                 <Route path="/products" element={<Products />} />
+                <Route path="/submissions" element={<ContactSubmissions />} />
                 <Route path="/settings" element={<Settings />} />
               </Routes>
             </AdminLayout>

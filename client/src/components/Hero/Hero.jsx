@@ -124,6 +124,9 @@ export default function Hero() {
           className="absolute inset-0 z-0 w-full h-full object-cover opacity-80"
         />
 
+        {/* Dark overlay to match the palette and make text readable */}
+        <div className="absolute inset-0 z-[1] bg-black/60" />
+
         {/* --- SCROLL-TRIGGERED TEXT OVERLAYS --- */}
         {/* These elements fade in and out based on the scroll progress (0.0 to 1.0) */}
         
@@ -136,12 +139,6 @@ export default function Hero() {
             pointerEvents: scrollProgress < 0.15 ? 'auto' : 'none'
           }}
         >
-          <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full border border-k-border bg-k-card/50 mb-8 backdrop-blur-md">
-            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
-            <span className="text-xs font-body text-k-silver-dim uppercase tracking-widest">
-              Precision 3D Manufacturing
-            </span>
-          </div>
           <h1 className="font-display text-5xl md:text-7xl font-bold text-white tracking-tight mb-6">
             From concept <br /> to <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-cyan-400">creation.</span>
           </h1>

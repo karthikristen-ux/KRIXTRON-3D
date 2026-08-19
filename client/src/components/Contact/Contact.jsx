@@ -23,6 +23,29 @@ export default function Contact() {
     // Generate a unique tracking ID
     const newTrackingId = `KRX-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
 
+    let fileUrl = null
+    
+    // Upload file if it exists
+    if (file) {
+      const fileExt = file.name.split('.').pop()
+      const fileName = `${newTrackingId}-${Date.now()}.${fileExt}`
+      
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from('submissions')
+        .upload(fileName, file)
+        
+      if (!uploadError && uploadData) {
+        const { data: publicUrlData } = supabase.storage
+          .from('submissions')
+          .getPublicUrl(fileName)
+          
+        fileUrl = publicUrlData.publicUrl
+      } else {
+        console.error('File upload error:', uploadError)
+        // We continue with submission even if file fails, just log it.
+      }
+    }
+
     // Insert into Supabase
     const { data, error: dbError } = await supabase
       .from('contact_submissions')
@@ -33,6 +56,7 @@ export default function Contact() {
           email: form.email, 
           phone: form.phone, 
           message: form.message,
+          file_url: fileUrl,
           status: 'new'
         }
       ])
