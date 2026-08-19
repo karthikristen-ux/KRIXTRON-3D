@@ -127,7 +127,35 @@ export default function TrackProcess() {
               <div className="mt-6 bg-k-dark rounded-xl p-6 border border-k-border">
                 <p className="text-xs text-k-silver-dim uppercase tracking-wider mb-4">Request Details</p>
                 <div className="text-sm text-white leading-relaxed whitespace-pre-wrap">
-                  {processData.message}
+                  {(() => {
+                    let message = processData.message || '';
+                    let file_url = null;
+                    const attachmentMatch = message.match(/\[ATTACHMENT\]:\s*(https?:\/\/[^\s]+)/);
+                    if (attachmentMatch) {
+                      file_url = attachmentMatch[1];
+                      message = message.replace(/\n\n\[ATTACHMENT\]:\s*https?:\/\/[^\s]+/, '');
+                    }
+                    
+                    return (
+                      <>
+                        <p>{message}</p>
+                        {file_url && (
+                          <div className="mt-6 pt-4 border-t border-k-border/50">
+                            <p className="text-xs text-k-silver-dim uppercase tracking-wider mb-2">Attached Reference File</p>
+                            <a 
+                              href={file_url} 
+                              target="_blank" 
+                              rel="noopener noreferrer" 
+                              className="inline-flex items-center gap-2 text-emerald-400 hover:text-emerald-300 text-sm transition-colors"
+                            >
+                              <CheckCircle2 size={14} />
+                              View Attachment
+                            </a>
+                          </div>
+                        )}
+                      </>
+                    )
+                  })()}
                 </div>
               </div>
             </div>
