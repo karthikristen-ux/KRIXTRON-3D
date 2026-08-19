@@ -130,13 +130,13 @@ export default function Hero() {
         {/* --- SCROLL-TRIGGERED TEXT OVERLAYS --- */}
         {/* These elements fade in and out based on the scroll progress (0.0 to 1.0) */}
         
-        {/* Text 1: The Initial Hook (0 to 0.15) */}
+        {/* Text 1: The Initial Hook (0 to 0.20) */}
         <div 
           className="absolute z-10 text-center transition-all duration-700 ease-out"
           style={{
-            opacity: scrollProgress < 0.15 ? 1 : 0,
-            transform: `translateY(${scrollProgress < 0.15 ? '0px' : '-40px'})`,
-            pointerEvents: scrollProgress < 0.15 ? 'auto' : 'none'
+            opacity: scrollProgress < 0.20 ? 1 : 0,
+            transform: `translateY(${scrollProgress < 0.20 ? '0px' : '-40px'})`,
+            pointerEvents: scrollProgress < 0.20 ? 'auto' : 'none'
           }}
         >
           <h1 className="font-display text-5xl md:text-7xl font-bold text-white tracking-tight mb-6">
@@ -148,43 +148,43 @@ export default function Hero() {
           </div>
         </div>
 
-        {/* Text 2: Left Side (0.25 to 0.45) */}
+        {/* Text 2: Left Side (0.20 to 0.48) */}
         <div 
           className="absolute z-10 left-[10%] md:left-[15%] max-w-sm transition-all duration-700 ease-out text-left"
           style={{
-            opacity: scrollProgress > 0.25 && scrollProgress < 0.45 ? 1 : 0,
-            transform: `translateY(${scrollProgress > 0.25 && scrollProgress < 0.45 ? '0px' : '40px'})`,
-            pointerEvents: scrollProgress > 0.25 && scrollProgress < 0.45 ? 'auto' : 'none'
+            opacity: scrollProgress > 0.20 && scrollProgress < 0.48 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.20 && scrollProgress < 0.48 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.20 && scrollProgress < 0.48 ? 'auto' : 'none'
           }}
         >
           <h2 className="font-display text-4xl font-bold text-white mb-4">Flawless Layers</h2>
-          <p className="text-k-silver-dim text-lg leading-relaxed">
+          <p className="text-white text-lg leading-relaxed drop-shadow-md">
             Every micron matters. Our high-precision resin printing ensures that your prototypes have the exact shape and structural integrity you designed.
           </p>
         </div>
 
-        {/* Text 3: Right Side (0.55 to 0.75) */}
+        {/* Text 3: Right Side (0.50 to 0.78) */}
         <div 
           className="absolute z-10 right-[10%] md:right-[15%] max-w-sm transition-all duration-700 ease-out text-right"
           style={{
-            opacity: scrollProgress > 0.55 && scrollProgress < 0.75 ? 1 : 0,
-            transform: `translateY(${scrollProgress > 0.55 && scrollProgress < 0.75 ? '0px' : '40px'})`,
-            pointerEvents: scrollProgress > 0.55 && scrollProgress < 0.75 ? 'auto' : 'none'
+            opacity: scrollProgress > 0.50 && scrollProgress < 0.78 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.50 && scrollProgress < 0.78 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.50 && scrollProgress < 0.78 ? 'auto' : 'none'
           }}
         >
           <h2 className="font-display text-4xl font-bold text-white mb-4">Complex Routing</h2>
-          <p className="text-k-silver-dim text-lg leading-relaxed">
+          <p className="text-white text-lg leading-relaxed drop-shadow-md">
             Seamlessly integrate wire channels, inserts, and moving parts perfectly into the final shape. No assembly required.
           </p>
         </div>
 
-        {/* Text 4: The Finale & Call to Action (0.85 to 1.0) */}
+        {/* Text 4: The Finale & Call to Action (0.80 to 1.0) */}
         <div 
           className="absolute z-10 text-center transition-all duration-700 ease-out"
           style={{
-            opacity: scrollProgress > 0.85 ? 1 : 0,
-            transform: `translateY(${scrollProgress > 0.85 ? '0px' : '40px'})`,
-            pointerEvents: scrollProgress > 0.85 ? 'auto' : 'none'
+            opacity: scrollProgress > 0.80 ? 1 : 0,
+            transform: `translateY(${scrollProgress > 0.80 ? '0px' : '40px'})`,
+            pointerEvents: scrollProgress > 0.80 ? 'auto' : 'none'
           }}
         >
           <h2 className="font-display text-5xl font-bold text-white mb-8">Ready to print?</h2>
