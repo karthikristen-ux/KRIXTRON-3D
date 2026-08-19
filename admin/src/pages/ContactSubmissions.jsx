@@ -21,7 +21,21 @@ export default function ContactSubmissions() {
       .order('created_at', { ascending: false })
       
     if (!error && data) {
-      setSubmissions(data)
+      // Extract file URL from message if present
+      const processedData = data.map(sub => {
+        let message = sub.message || ''
+        let file_url = sub.file_url || null // Fallback if they ever add the column
+        
+        const attachmentMatch = message.match(/\[ATTACHMENT\]:\s*(https?:\/\/[^\s]+)/)
+        if (attachmentMatch) {
+          file_url = attachmentMatch[1]
+          message = message.replace(/\n\n\[ATTACHMENT\]:\s*https?:\/\/[^\s]+/, '')
+        }
+        
+        return { ...sub, message, file_url }
+      })
+      
+      setSubmissions(processedData)
     }
     setLoading(false)
   }

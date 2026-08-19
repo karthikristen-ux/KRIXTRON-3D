@@ -46,7 +46,11 @@ export default function Contact() {
       }
     }
 
-    // Insert into Supabase
+    // Insert into Supabase (Appending fileUrl to message to avoid schema errors if file_url column doesn't exist)
+    const finalMessage = fileUrl 
+      ? `${form.message}\n\n[ATTACHMENT]: ${fileUrl}` 
+      : form.message;
+
     const { data, error: dbError } = await supabase
       .from('contact_submissions')
       .insert([
@@ -55,8 +59,7 @@ export default function Contact() {
           name: form.name, 
           email: form.email, 
           phone: form.phone, 
-          message: form.message,
-          file_url: fileUrl,
+          message: finalMessage,
           status: 'new'
         }
       ])
